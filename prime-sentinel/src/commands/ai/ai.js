@@ -21,9 +21,15 @@ module.exports = {
       .addUserOption(o => o.setName('user').setDescription('Thanh vien').setRequired(true))),
 
   async execute(interaction) {
-    await interaction.deferReply();
+    // defer truoc, neu loi thi thoat luon
+    try { await interaction.deferReply(); } catch { return; }
+
     const sub = interaction.options.getSubcommand();
     const guild = interaction.guild;
+
+    const safeEdit = async (data) => {
+      try { return await interaction.editReply(data); } catch { }
+    };
 
     if (sub === 'advisor') {
       const memberCount = guild.memberCount;
@@ -40,7 +46,7 @@ Phan tich va dua ra 3 de xuat cu the. Tieng Viet khong dau. Gioi han 250 tu.`);
           { name: 'Co du lieu', value: String(userCount), inline: true },
         )
         .setFooter({ text: 'Prime Sentinel AI • Powered by Groq' }).setTimestamp();
-      return interaction.editReply({ embeds: [embed] });
+      return safeEdit({ embeds: [embed] });
     }
 
     if (sub === 'health') {
@@ -60,7 +66,7 @@ Tinh diem suc khoe 0-100 va giai thich. Tieng Viet khong dau. Gioi han 200 tu.`)
         )
         .setDescription(response)
         .setFooter({ text: 'Prime Sentinel AI • Powered by Groq' }).setTimestamp();
-      return interaction.editReply({ embeds: [embed] });
+      return safeEdit({ embeds: [embed] });
     }
 
     if (sub === 'announce') {
@@ -71,7 +77,7 @@ Tieng Viet khong dau, 100-150 tu, co emoji phu hop. Chi tra noi dung thong bao.`
       const embed = new EmbedBuilder().setTitle('📢 AI ANNOUNCEMENT').setColor(0x1d4ed8)
         .setDescription(response)
         .setFooter({ text: `Tao boi AI • ${interaction.user.username} • Prime Sentinel` }).setTimestamp();
-      return interaction.editReply({ embeds: [embed] });
+      return safeEdit({ embeds: [embed] });
     }
 
     if (sub === 'ask') {
@@ -83,13 +89,12 @@ Cau hoi: ${question}`);
         .addFields({ name: 'Cau hoi', value: question })
         .setDescription(response)
         .setFooter({ text: 'Prime Sentinel AI • Powered by Groq' }).setTimestamp();
-      return interaction.editReply({ embeds: [embed] });
+      return safeEdit({ embeds: [embed] });
     }
 
     if (sub === 'insights') {
       const memberCount = guild.memberCount;
       const onlineCount = guild.members.cache.filter(m => m.presence?.status === 'online').size;
-      const userCount = await User.countDocuments();
       const topUsers = await User.find().sort({ messageCount: -1 }).limit(3);
       const totalCoins = await Economy.aggregate([{ $group: { _id: null, total: { $sum: '$coins' } } }]);
       const response = await generateInsights({
@@ -109,14 +114,14 @@ Cau hoi: ${question}`);
           { name: 'Top Active', value: topList, inline: false },
         )
         .setFooter({ text: 'Prime Sentinel AI • Powered by Groq' }).setTimestamp();
-      return interaction.editReply({ embeds: [embed] });
+      return safeEdit({ embeds: [embed] });
     }
 
     if (sub === 'member') {
       const target = interaction.options.getUser('user') || interaction.user;
       const userData = await User.findOne({ userId: target.id });
       const ecoData = await Economy.findOne({ userId: target.id });
-      if (!userData) return interaction.editReply({ content: `${target.username} chua co du lieu trong he thong!` });
+      if (!userData) return safeEdit({ content: `${target.username} chua co du lieu trong he thong!` });
       const memberInfo = guild.members.cache.get(target.id);
       const joinedAt = memberInfo?.joinedAt?.toLocaleDateString('vi-VN') || 'Khong ro';
       const summary = await summarizeMember({
@@ -139,7 +144,7 @@ Cau hoi: ${question}`);
           { name: 'Tham gia', value: joinedAt, inline: true },
         )
         .setFooter({ text: 'Prime Sentinel AI • Powered by Groq' }).setTimestamp();
-      return interaction.editReply({ embeds: [embed] });
+      return safeEdit({ embeds: [embed] });
     }
 
     if (sub === 'events') {
@@ -155,13 +160,13 @@ Cau hoi: ${question}`);
           { name: 'Thanh vien', value: String(guild.memberCount), inline: true },
         )
         .setFooter({ text: 'Prime Sentinel AI • Powered by Groq' }).setTimestamp();
-      return interaction.editReply({ embeds: [embed] });
+      return safeEdit({ embeds: [embed] });
     }
 
     if (sub === 'autorole') {
       const target = interaction.options.getUser('user');
       const userData = await User.findOne({ userId: target.id });
-      if (!userData) return interaction.editReply({ content: `${target.username} chua co du lieu!` });
+      if (!userData) return safeEdit({ content: `${target.username} chua co du lieu!` });
       const result = await suggestRole(userData.messageCount || 0, userData.level || 1, 'general, chat');
       const embed = new EmbedBuilder().setTitle('🎭 AI SMART AUTO-ROLE').setColor(0x00ff88)
         .setThumbnail(target.displayAvatarURL())
@@ -184,7 +189,7 @@ Cau hoi: ${question}`);
       } else {
         embed.setDescription(`💡 De xuat role **${result.role}** (do tin cay chua du 70% de tu dong cap).`);
       }
-      return interaction.editReply({ embeds: [embed] });
+      return safeEdit({ embeds: [embed] });
     }
   }
 };
